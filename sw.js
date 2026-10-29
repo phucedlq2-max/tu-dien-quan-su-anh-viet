@@ -1,4 +1,4 @@
-const CACHE_NAME = "military-dictionary-v1";
+const CACHE_NAME = "military-dictionary-v5";
 const FILES = ["./","./index.html","./styles.css","./app.js","./vocabulary.json","./manifest.json","./favicon.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(FILES))));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k))))));

@@ -63,7 +63,7 @@ function searchWords(){
  $("#emptyState").classList.toggle("hidden",matches.length!==0);
  $("#statusLine").textContent=q?`Tìm thấy ${matches.length} kết quả ${searchMode==="en-vi"?"khi tra Anh → Việt":searchMode==="vi-en"?"khi tra Việt → Anh":"ở cả hai chiều"}. Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt.`:`${dictionary.length} thuật ngữ tích hợp · Có thể tra tiếng Anh hoặc tiếng Việt.`;
  const expandBtn=$("#expandSearch");
- if(expandBtn){expandBtn.disabled=searchMode==="vi-en";expandBtn.textContent=searchMode==="vi-en"?"Tra cứu mở rộng hiện chỉ hỗ trợ tiếng Anh":"Tra cứu mở rộng trên Internet";}
+ if(expandBtn){expandBtn.disabled=!q;expandBtn.textContent="Hỏi ChatGPT về thuật ngữ này ↗";}
 }
 function renderFavorites(){
  const words=dictionary.filter(w=>favorites.has(w.term));
@@ -104,32 +104,23 @@ function showQuestion(){
  }));
  $("#nextQuestion").addEventListener("click",()=>{quizIndex++;answered=false;showQuestion();});
 }
-async function expandLookup(){
- const q=$("#searchInput").value.trim(); if(!q)return;
- const btn=$("#expandSearch");btn.disabled=true;btn.textContent="Đang tra cứu…";
- let found=[];
- try{
-   const res=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`);
-   if(res.ok){
-    const data=await res.json();
-    found=data.slice(0,3).map(entry=>{
-      const phon=entry.phonetic || entry.phonetics?.find(p=>p.text)?.text || "";
-      const aud=entry.phonetics?.find(p=>p.audio)?.audio || "";
-      const definition=entry.meanings?.flatMap(m=>m.definitions||[]).map(d=>d.definition).filter(Boolean).slice(0,2).join(" ");
-      return {term:entry.word||q,ipa:phon,pos:entry.meanings?.[0]?.partOfSpeech||"",meaning:"Chưa có bản dịch tiếng Việt trong bộ từ điển",definition:definition||"Chưa có định nghĩa",category:"Tra cứu mở rộng",example_en:entry.meanings?.flatMap(m=>m.definitions||[]).find(d=>d.example)?.example||"",example_vi:"",tags:["Dữ liệu tiếng Anh"],source:"DictionaryAPI"};
-    });
-   }
- }catch(e){console.warn(e);}
- if(found.length){
-  const n=normalize(q);const local=dictionary.filter(w=>normalize(w.term)===n);
-  renderWords([...local,...found.filter(f=>!local.some(l=>normalize(l.term)===normalize(f.term)))]);
-  $("#emptyState").classList.add("hidden");
-  $("#statusLine").textContent="Kết quả mở rộng từ DictionaryAPI. Định nghĩa tiếng Anh không thay thế bản dịch chuyên ngành.";
- }else{
-  $("#statusLine").textContent="Không lấy được dữ liệu mở rộng. Kiểm tra kết nối mạng hoặc thử một từ tiếng Anh đơn.";
-  $("#emptyState").classList.remove("hidden");
+function expandLookup(){
+ const q=$("#searchInput").value.trim();
+ if(!q) return;
+ // The curated local dictionary always takes priority. This action only opens ChatGPT
+ // when the user explicitly asks for outside help; no API key or automatic replacement.
+ let direction="dịch theo ngữ cảnh quân sự";
+ if(searchMode==="en-vi") direction="dịch từ tiếng Anh sang tiếng Việt";
+ else if(searchMode==="vi-en") direction="dịch từ tiếng Việt sang tiếng Anh";
+ else {
+   const hasVietnamese=/[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừừữựýỳỷỹỵ]/i.test(q);
+   direction=hasVietnamese?"dịch từ tiếng Việt sang tiếng Anh":"xác định ngôn ngữ nguồn và dịch sang ngôn ngữ còn lại (Anh–Việt hoặc Việt–Anh)";
  }
- btn.disabled=false;btn.textContent="Tra cứu mở rộng trên Internet";
+ const prompt=`Hãy hỗ trợ dịch thuật ngữ cho từ điển quân sự Anh–Việt. Cụm từ cần dịch: “${q}”. Yêu cầu: ${direction}. Ưu tiên thuật ngữ quân sự chính xác; nêu bản dịch đề xuất, nghĩa theo ngữ cảnh, và các cách dịch khác nếu có. Nếu thiếu ngữ cảnh, hãy nói rõ điểm chưa chắc chắn và không tự khẳng định là thuật ngữ chính thức. Đây là bản dịch tham khảo, không tự động thay thế bộ từ vựng nội bộ của tôi.`;
+ const url=new URL("https://chatgpt.com/");
+ url.searchParams.set("q",prompt);
+ window.open(url.toString(),"_blank","noopener,noreferrer");
+ $("#statusLine").textContent="Đã mở ChatGPT trong tab mới với câu hỏi dịch đã điền sẵn. Nếu cần, đăng nhập rồi gửi câu hỏi; bộ từ vựng nội bộ vẫn là nguồn ưu tiên.";
 }
 async function init(){
  try{const r=await fetch("vocabulary.json");dictionary=await r.json();}catch(e){$("#statusLine").textContent="Không tải được vocabulary.json. Hãy giữ tệp này cùng thư mục với index.html.";return;}

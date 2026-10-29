@@ -78,3 +78,12 @@ Phiên bản cập nhật hỗ trợ ba chế độ tìm kiếm:
 - **Việt → Anh**: tìm nghĩa hoặc cụm từ tiếng Việt để tìm thuật ngữ tiếng Anh tương ứng.
 
 Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt. Kết quả được tìm trong thuật ngữ, nghĩa chính, nghĩa khác, ví dụ và một số trường dữ liệu liên quan. Dữ liệu từ vựng vẫn cần thẩm định chuyên ngành trước khi dùng chính thức.
+
+
+## Tra cứu/dịch trực tuyến hai chiều
+Nút tra cứu Internet sử dụng MyMemory Translation API để dịch cả Việt → Anh và Anh → Việt; với từ tiếng Anh đơn, ứng dụng có thể bổ sung định nghĩa/phiên âm từ DictionaryAPI.dev. Dịch vụ công cộng có giới hạn sử dụng và kết quả dịch máy không bảo đảm chính xác, đặc biệt với thuật ngữ quân sự. Luôn đối chiếu với từ điển chuyên ngành và tài liệu chính thức.
+
+
+## Mở ChatGPT khi không tìm thấy thuật ngữ
+
+Ứng dụng luôn tra bộ từ vựng nội bộ trước. Nếu không có kết quả, người dùng có thể bấm **Hỏi ChatGPT về thuật ngữ này** để mở ChatGPT với câu hỏi dịch đã điền sẵn theo chiều tra cứu. Không dùng API key và không tự động lấy kết quả từ ChatGPT về ứng dụng; người dùng cần đăng nhập (nếu được yêu cầu) và gửi câu hỏi trong ChatGPT. Kết quả chỉ là bản dịch tham khảo, không sửa dữ liệu từ điển.
