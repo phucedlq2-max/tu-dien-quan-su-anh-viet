@@ -1,0 +1,17 @@
+{
+  "name": "Từ điển Quân sự Anh – Việt",
+  "short_name": "Từ điển QS",
+  "description": "Từ điển Anh–Việt chuyên ngành quân sự",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f0",
+  "theme_color": "#173d2a",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

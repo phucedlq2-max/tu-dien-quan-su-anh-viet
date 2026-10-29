@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d2a">
+  <meta name="description" content="Từ điển Anh–Việt chuyên ngành quân sự: tra cứu, phát âm, ví dụ song ngữ và ôn tập từ vựng.">
+  <title>Từ điển Quân sự Anh – Việt</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true">Q</div>
+    <div class="brand">
+      <h1>TỪ ĐIỂN QUÂN SỰ</h1>
+      <p>ENGLISH – VIETNAMESE · MILITARY VOCABULARY</p>
+    </div>
+    <button id="themeBtn" class="icon-btn" aria-label="Đổi giao diện" title="Đổi giao diện">◐</button>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="eyebrow">CÔNG CỤ HỌC TẬP</div>
+      <h2>Tra cứu đúng thuật ngữ.<br><span>Ghi nhớ lâu hơn.</span></h2>
+      <p>Từ vựng quân sự có ví dụ song ngữ, phiên âm và công cụ tự ôn tập.</p>
+      <div class="searchbar">
+        <span aria-hidden="true">⌕</span>
+        <input id="searchInput" type="search" autocomplete="off" placeholder="Nhập từ tiếng Anh hoặc tiếng Việt…" aria-label="Tìm từ">
+        <button id="clearSearch" class="clear-btn" aria-label="Xóa nội dung tìm kiếm">×</button>
+      </div>
+      <div class="search-direction" role="group" aria-label="Chọn chiều tra cứu">
+        <span>Chiều tra cứu:</span>
+        <button type="button" class="direction-btn active" data-mode="auto" aria-pressed="true">Tự động cả hai chiều</button>
+        <button type="button" class="direction-btn" data-mode="en-vi" aria-pressed="false">Anh → Việt</button>
+        <button type="button" class="direction-btn" data-mode="vi-en" aria-pressed="false">Việt → Anh</button>
+      </div>
+      <div class="search-hint">Thử tìm: <button class="suggestion" data-query="training shooting techniques">training shooting techniques</button><button class="suggestion" data-query="lựu đạn">lựu đạn</button><button class="suggestion" data-query="tiểu đội">tiểu đội</button><button class="suggestion" data-query="rãnh xoắn">rãnh xoắn</button></div>
+    </section>
+
+    <nav class="tabs" aria-label="Các chức năng">
+      <button class="tab active" data-view="lookup">Tra từ</button>
+      <button class="tab" data-view="favorites">Từ yêu thích <span id="favCount" class="count">0</span></button>
+      <button class="tab" data-view="practice">Ôn tập</button>
+      <button class="tab" data-view="quiz">Kiểm tra</button>
+    </nav>
+
+    <section id="lookupView" class="view">
+      <div id="statusLine" class="status-line">Bộ từ điển tích hợp sẵn · Có thể tra cứu mở rộng khi có Internet.</div>
+      <div id="results" class="results"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">⌕</div>
+        <h3>Chưa tìm thấy thuật ngữ phù hợp</h3>
+        <p>Thử từ khóa ngắn hơn hoặc tra cứu dữ liệu mở rộng bên dưới.</p>
+        <button id="expandSearch" class="primary-btn">Tra cứu mở rộng trên Internet</button>
+      </div>
+    </section>
+
+    <section id="favoritesView" class="view hidden">
+      <div class="section-heading"><div><p class="eyebrow">SỔ TAY CÁ NHÂN</p><h2>Từ yêu thích</h2></div><span id="favSummary" class="muted"></span></div>
+      <div id="favoritesList" class="results"></div>
+      <div id="noFavorites" class="empty-state"><div class="empty-icon">☆</div><h3>Chưa có từ nào được lưu</h3><p>Nhấn biểu tượng ngôi sao trên thẻ từ để lưu vào sổ tay.</p></div>
+    </section>
+
+    <section id="practiceView" class="view hidden">
+      <div class="section-heading"><div><p class="eyebrow">GHI NHỚ CHỦ ĐỘNG</p><h2>Thẻ ôn tập</h2></div><span id="practiceProgress" class="muted"></span></div>
+      <div id="flashcard" class="flashcard">
+        <div class="flashcard-label">THUẬT NGỮ</div><div id="flashTerm" class="flash-term">Nhấn bắt đầu để ôn tập</div>
+        <div id="flashMeaning" class="flash-meaning hidden"></div>
+        <button id="revealBtn" class="secondary-btn">Hiện nghĩa</button>
+        <div class="flash-actions"><button id="againBtn" class="secondary-btn" disabled>Ôn lại</button><button id="knownBtn" class="primary-btn" disabled>Đã nhớ ✓</button></div>
+      </div>
+      <p class="small-note">Thẻ lấy từ bộ thuật ngữ tích hợp sẵn và các từ bạn đã lưu yêu thích.</p>
+      <button id="startPractice" class="primary-btn">Bắt đầu / Trộn thẻ</button>
+    </section>
+
+    <section id="quizView" class="view hidden">
+      <div class="section-heading"><div><p class="eyebrow">TỰ ĐÁNH GIÁ</p><h2>Kiểm tra nhanh</h2></div><span id="quizScore" class="muted">Chưa bắt đầu</span></div>
+      <div id="quizBox" class="quiz-box">
+        <p>Kiểm tra nghĩa tiếng Việt của 10 thuật ngữ ngẫu nhiên.</p>
+        <button id="startQuiz" class="primary-btn">Bắt đầu kiểm tra</button>
+      </div>
+    </section>
+
+    <section class="note-panel">
+      <div class="note-icon">i</div><div><strong>Lưu ý về dữ liệu</strong><p>Thuật ngữ và bản dịch chuyên ngành được biên soạn sẵn là dữ liệu tham khảo. Tra cứu mở rộng có thể dùng từ điển tiếng Anh công khai và dịch máy; cần kiểm tra lại ngữ cảnh, nhất là thuật ngữ quân sự. Từ đã lưu nằm trên trình duyệt hiện tại.</p></div>
+    </section>
+  </main>
+  <footer><span>EN–VI MILITARY DICTIONARY</span><span>Học tập · Tra cứu · Ôn luyện</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
