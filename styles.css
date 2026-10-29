@@ -4,3 +4,15 @@
 @media(max-width:680px){.topbar{height:72px;padding:0 16px}.container{padding:0 16px 35px}.hero{padding-top:32px}.hero h2{letter-spacing:-.7px}.results{grid-template-columns:1fr}.word-card{padding:17px}.tabs{margin-left:-16px;margin-right:-16px;padding:0 10px}.tab{padding:12px 11px;font-size:13px}.section-heading h2{font-size:23px}.flashcard{padding:26px 16px}footer{padding:17px 16px}.footer-brand{flex-direction:column;gap:4px}}
 
 .search-direction{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:13px;font-size:12px;color:var(--muted)}.direction-btn{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--card);color:var(--ink);font-size:12px}.direction-btn.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}body.dark .direction-btn.active{color:#fff}@media(max-width:600px){.search-direction{align-items:flex-start}.search-direction>span{width:100%}.direction-btn{padding:7px 9px}}
+
+/* Developer identity banner: visible near the top of the app */
+.developer-banner{max-width:1080px;margin:16px auto 0;padding:15px 22px;display:flex;align-items:center;gap:14px;background:linear-gradient(110deg,#e7efdf,#f8f9f3);border:1px solid #d6e2d1;border-left:5px solid var(--green2);border-radius:14px;color:#173d2a;box-shadow:0 5px 18px rgba(23,61,42,.06)}
+.developer-banner-mark{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:var(--green);color:var(--lime);font-size:22px}
+.developer-banner-content{min-width:0;line-height:1.55}
+.developer-banner-label{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#426b48}
+.developer-banner-name{font-size:16px;font-weight:800;color:#173d2a}
+.developer-banner-role{font-size:12px;color:#405849}
+.developer-banner-email{font-size:12px;color:#405849}.developer-banner-email a{color:#23583b;font-weight:700;text-underline-offset:2px}
+body.dark .developer-banner{background:linear-gradient(110deg,#1b3021,#202d22);border-color:#304b35;color:#edf4ed}
+body.dark .developer-banner-label{color:#d9e66d}body.dark .developer-banner-name{color:#fff}body.dark .developer-banner-role,body.dark .developer-banner-email{color:#d8e4d9}body.dark .developer-banner-email a{color:#d9e66d}
+@media(max-width:680px){.developer-banner{margin:10px 12px 0;padding:12px;gap:11px}.developer-banner-mark{width:36px;height:36px;flex-basis:36px;font-size:19px}.developer-banner-name{font-size:14px}.developer-banner-role,.developer-banner-email{font-size:11px}}

@@ -87,3 +87,20 @@ Nút tra cứu Internet sử dụng MyMemory Translation API để dịch cả V
 ## Mở ChatGPT khi không tìm thấy thuật ngữ
 
 Ứng dụng luôn tra bộ từ vựng nội bộ trước. Nếu không có kết quả, người dùng có thể bấm **Hỏi ChatGPT về thuật ngữ này** để mở ChatGPT với câu hỏi dịch đã điền sẵn theo chiều tra cứu. Không dùng API key và không tự động lấy kết quả từ ChatGPT về ứng dụng; người dùng cần đăng nhập (nếu được yêu cầu) và gửi câu hỏi trong ChatGPT. Kết quả chỉ là bản dịch tham khảo, không sửa dữ liệu từ điển.
+
+
+## Sử dụng ngoại tuyến (offline)
+
+- Ứng dụng có Service Worker lưu bộ giao diện và `vocabulary.json` vào bộ nhớ đệm của trình duyệt.
+- Người dùng cần mở ứng dụng khi có Internet ít nhất một lần và chờ tải xong dữ liệu trước khi ngắt mạng.
+- Sau khi cập nhật phiên bản mới, mở ứng dụng online một lần để nhận mã mới. Nếu trình duyệt vẫn dùng bản cũ, đóng các tab của ứng dụng rồi mở lại hoặc xóa dữ liệu website trong cài đặt trình duyệt.
+- Tra cứu bộ từ vựng nội bộ, từ yêu thích, ôn tập và kiểm tra có thể dùng offline khi dữ liệu đã được lưu. Mở ChatGPT, tra cứu Internet và các tính năng trực tuyến khác cần mạng.
+- Trên Android, dùng Chrome mở website → menu ⋮ → **Cài đặt ứng dụng** hoặc **Thêm vào màn hình chính** (tên tùy phiên bản Chrome).
+- Trên iPhone/iPad, dùng Safari → Chia sẻ → **Thêm vào Màn hình chính**.
+- Offline phụ thuộc trình duyệt và dung lượng bộ nhớ; xóa dữ liệu website có thể làm mất bộ nhớ đệm. Từ yêu thích được lưu cục bộ trên từng trình duyệt/thiết bị.
+
+
+## ENGARMY Offline PWA update
+- Developer information is displayed near the top, immediately below the main header.
+- Removed duplicate developer information from the footer.
+- Service worker cache version bumped to refresh the update.
