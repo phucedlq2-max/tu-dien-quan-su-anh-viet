@@ -104,3 +104,7 @@ Nút tra cứu Internet sử dụng MyMemory Translation API để dịch cả V
 - Developer information is displayed near the top, immediately below the main header.
 - Removed duplicate developer information from the footer.
 - Service worker cache version bumped to refresh the update.
+
+
+## Logo ứng dụng
+Logo chính thức do người phát triển cung cấp được dùng tại biểu tượng đầu trang, favicon và biểu tượng PWA `icon-192.png` / `icon-512.png`. Khi cập nhật GitHub, giữ nguyên `CNAME` của tên miền nếu kho đang có tệp này.

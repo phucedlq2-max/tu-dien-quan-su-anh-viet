@@ -1,8 +1,8 @@
-const CACHE_NAME = "engarmy-offline-v7";
+const CACHE_NAME = "engarmy-offline-v9";
 const APP_SHELL = [
   "./", "./index.html", "./styles.css", "./app.js",
   "./vocabulary.json", "./manifest.json", "./favicon.svg",
-  "./icon-192.png", "./icon-512.png"
+  "./icon-192.png", "./icon-512.png", "./favicon-64.png", "./apple-touch-icon.png"
 ];
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
