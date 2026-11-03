@@ -1,926 +1,147 @@
-
-"use strict";
-
-/* =========================================================
-   TỪ ĐIỂN QUÂN SỰ ANH – VIỆT
-   File: app.js
-   Dữ liệu: vocabulary.json
-   ========================================================= */
-
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 let dictionary = [];
-let favorites = new Set();
+let favorites = new Set(JSON.parse(localStorage.getItem("milDictFavorites") || "[]"));
 let activeView = "lookup";
 let searchMode = "auto";
-
-let practiceDeck = [];
-let practiceIndex = 0;
-
-let quizQuestions = [];
-let quizIndex = 0;
-let score = 0;
-let answered = false;
-
-/* -------------------- HÀM CƠ BẢN -------------------- */
-
-const normalize = (value) =>
-  String(value ?? "")
-    .toLocaleLowerCase("vi")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .trim();
-
-const escapeHtml = (value) =>
-  String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[character]));
-
-function shuffle(array) {
-  const result = [...array];
-
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-
-  return result;
+let practiceDeck = [], practiceIndex = 0, quizQuestions = [], quizIndex = 0, score = 0, answered = false;
+const normalize = s => (s || "").toLocaleLowerCase("vi").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").trim();
+const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function saveFavorites(){localStorage.setItem("milDictFavorites",JSON.stringify([...favorites])); updateFavCount();}
+function updateFavCount(){$("#favCount").textContent=favorites.size; $("#favSummary").textContent=`${favorites.size} thuật ngữ`;}
+function isFavorite(term){return favorites.has(term);}
+function cardHTML(w){
+ const saved=isFavorite(w.term);
+ return `<article class="word-card">
+ <div class="word-top"><div><h3 class="term">${escapeHtml(w.term)}</h3><p class="ipa">${escapeHtml(w.ipa || "IPA chưa có trong tài liệu")} ${w.pos?` · ${escapeHtml(w.pos)}`:""}</p></div>
+ <div class="word-tools"><button class="tool-btn" title="Nghe phát âm" aria-label="Nghe phát âm" data-speak="${escapeHtml(w.term)}">▶</button><button class="tool-btn ${saved?"saved":""}" title="${saved?"Bỏ yêu thích":"Lưu yêu thích"}" aria-label="Lưu yêu thích" data-fav="${escapeHtml(w.term)}">${saved?"★":"☆"}</button></div></div>
+ <p class="meaning">${escapeHtml(w.meaning || "Chưa có bản dịch")}</p>
+ ${w.definition?`<p class="part">${escapeHtml(w.definition)}</p>`:""}
+ ${w.example_en?`<div class="example"><div class="example-en">${escapeHtml(w.example_en)}</div><div class="example-vi">${escapeHtml(w.example_vi || "")}</div></div>`:""}
+ ${w.alternate_meanings?.length?`<div class="example"><strong>Nghĩa khác trong tài liệu:</strong><div class="example-vi">${w.alternate_meanings.map(escapeHtml).join("; ")}</div></div>`:""}
+ <div class="tags"><span class="tag">${escapeHtml(w.category || "Từ điển mở rộng")}</span>${w.status?`<span class="tag">${escapeHtml(w.status)}</span>`:""}${(w.tags||[]).slice(0,3).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("")}${(w.sources||[w.source]).filter(Boolean).slice(0,2).map(s=>`<span class="tag">${escapeHtml(s)}</span>`).join("")}</div>
+ </article>`;
 }
-
-/* -------------------- LƯU TỪ YÊU THÍCH -------------------- */
-
-function loadFavorites() {
-  try {
-    const saved = JSON.parse(
-      localStorage.getItem("milDictFavorites") || "[]"
-    );
-
-    favorites = new Set(
-      Array.isArray(saved) ? saved : []
-    );
-  } catch (error) {
-    console.warn("Không đọc được danh sách yêu thích:", error);
-    favorites = new Set();
-  }
+function renderWords(words,target="#results"){
+ const el=$(target); el.innerHTML=words.map(cardHTML).join("");
+ el.querySelectorAll("[data-fav]").forEach(b=>b.addEventListener("click",()=>toggleFavorite(b.dataset.fav)));
+ el.querySelectorAll("[data-speak]").forEach(b=>b.addEventListener("click",()=>speak(b.dataset.speak)));
 }
-
-function saveFavorites() {
-  try {
-    localStorage.setItem(
-      "milDictFavorites",
-      JSON.stringify([...favorites])
-    );
-  } catch (error) {
-    console.error("Không lưu được từ yêu thích:", error);
-  }
-
-  updateFavCount();
+function toggleFavorite(term){
+ if(favorites.has(term)) favorites.delete(term); else favorites.add(term);
+ saveFavorites(); if(activeView==="favorites") renderFavorites(); else searchWords();
 }
-
-function updateFavCount() {
-  const count = $("#favCount");
-  const summary = $("#favSummary");
-
-  if (count) count.textContent = favorites.size;
-
-  if (summary) {
-    summary.textContent = `${favorites.size} thuật ngữ`;
-  }
+function speak(term){
+ if(!("speechSynthesis" in window)){alert("Trình duyệt này chưa hỗ trợ phát âm tự động.");return;}
+ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(term); u.lang="en-GB"; u.rate=.88; speechSynthesis.speak(u);
 }
-
-function isFavorite(term) {
-  return favorites.has(term);
+function searchFields(w){
+ const english = [w.term, w.original_term, w.example_en, w.ipa, w.pos].filter(Boolean).join(" ");
+ const vietnamese = [w.meaning, ...(w.alternate_meanings||[]), w.original_meaning, w.example_vi].filter(Boolean).join(" ");
+ const other = [w.definition, w.category, ...(w.tags||[]), ...(w.sources||[]), w.source, w.status].filter(Boolean).join(" ");
+ return {english:normalize(english), vietnamese:normalize(vietnamese), other:normalize(other)};
 }
-
-function toggleFavorite(term) {
-  if (favorites.has(term)) {
-    favorites.delete(term);
-  } else {
-    favorites.add(term);
-  }
-
-  saveFavorites();
-
-  if (activeView === "favorites") {
-    renderFavorites();
-  } else {
-    searchWords();
-  }
+function searchScore(w,n){
+ if(!n) return 0;
+ const f=searchFields(w), term=normalize(w.term), meaning=normalize(w.meaning);
+ if(searchMode==="en-vi"){
+   if(term===n)return 100; if(term.startsWith(n))return 80; if(f.english.includes(n))return 60; if(f.other.includes(n))return 20; return -1;
+ }
+ if(searchMode==="vi-en"){
+   if(meaning===n)return 100; if(meaning.startsWith(n))return 80; if(f.vietnamese.includes(n))return 60; if(f.other.includes(n))return 20; return -1;
+ }
+ if(term===n)return 110; if(meaning===n)return 105;
+ if(term.startsWith(n))return 90; if(meaning.startsWith(n))return 85;
+ if(f.english.includes(n))return 70; if(f.vietnamese.includes(n))return 65;
+ if(f.other.includes(n))return 30; return -1;
 }
-
-/* -------------------- HIỂN THỊ THẺ TỪ -------------------- */
-
-function cardHTML(word) {
-  const saved = isFavorite(word.term);
-
-  const alternateMeanings = Array.isArray(word.alternate_meanings)
-    ? word.alternate_meanings
-    : [];
-
-  const tags = Array.isArray(word.tags) ? word.tags : [];
-
-  const sources = Array.isArray(word.sources)
-    ? word.sources
-    : [word.source];
-
-  return `
-    <article class="word-card">
-      <div class="word-top">
-        <div>
-          <h3 class="term">${escapeHtml(word.term)}</h3>
-          <p class="ipa">
-            ${escapeHtml(word.ipa || "IPA chưa có trong tài liệu")}
-            ${word.pos ? ` · ${escapeHtml(word.pos)}` : ""}
-          </p>
-        </div>
-
-        <div class="word-tools">
-          <button
-            class="tool-btn"
-            type="button"
-            title="Nghe phát âm"
-            aria-label="Nghe phát âm"
-            data-speak="${escapeHtml(word.term)}"
-          >▶</button>
-
-          <button
-            class="tool-btn ${saved ? "saved" : ""}"
-            type="button"
-            title="${saved ? "Bỏ yêu thích" : "Lưu yêu thích"}"
-            aria-label="${saved ? "Bỏ yêu thích" : "Lưu yêu thích"}"
-            data-fav="${escapeHtml(word.term)}"
-          >${saved ? "★" : "☆"}</button>
-        </div>
-      </div>
-
-      <p class="meaning">
-        ${escapeHtml(word.meaning || "Chưa có bản dịch")}
-      </p>
-
-      ${
-        word.definition
-          ? `<p class="part">${escapeHtml(word.definition)}</p>`
-          : ""
-      }
-
-      ${
-        word.example_en
-          ? `
-            <div class="example">
-              <div class="example-en">
-                ${escapeHtml(word.example_en)}
-              </div>
-              <div class="example-vi">
-                ${escapeHtml(word.example_vi || "")}
-              </div>
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        alternateMeanings.length
-          ? `
-            <div class="example">
-              <strong>Nghĩa khác trong tài liệu:</strong>
-              <div class="example-vi">
-                ${alternateMeanings.map(escapeHtml).join("; ")}
-              </div>
-            </div>
-          `
-          : ""
-      }
-
-      <div class="tags">
-        <span class="tag">
-          ${escapeHtml(word.category || "Từ điển mở rộng")}
-        </span>
-
-        ${
-          word.status
-            ? `<span class="tag">${escapeHtml(word.status)}</span>`
-            : ""
-        }
-
-        ${tags.slice(0, 3).map((tag) =>
-          `<span class="tag">${escapeHtml(tag)}</span>`
-        ).join("")}
-
-        ${sources.filter(Boolean).slice(0, 2).map((source) =>
-          `<span class="tag">${escapeHtml(source)}</span>`
-        ).join("")}
-      </div>
-    </article>
-  `;
+function searchWords(){
+ const q=$("#searchInput").value.trim(), n=normalize(q);
+ const matches=dictionary.map(w=>({w,score:searchScore(w,n)})).filter(x=>!n||x.score>=0)
+ .sort((a,b)=>b.score-a.score||normalize(a.w.term).localeCompare(normalize(b.w.term))).map(x=>x.w);
+ renderWords(matches);
+ $("#emptyState").classList.toggle("hidden",matches.length!==0);
+ $("#statusLine").textContent=q?`Tìm thấy ${matches.length} kết quả ${searchMode==="en-vi"?"khi tra Anh → Việt":searchMode==="vi-en"?"khi tra Việt → Anh":"ở cả hai chiều"}. Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt.`:`${dictionary.length} thuật ngữ tích hợp · Có thể tra tiếng Anh hoặc tiếng Việt.`;
+ const expandBtn=$("#expandSearch");
+ if(expandBtn){expandBtn.disabled=!q;expandBtn.textContent="Hỏi ChatGPT về thuật ngữ này ↗";}
 }
-
-function renderWords(words, target = "#results") {
-  const element = $(target);
-
-  if (!element) return;
-
-  element.innerHTML = words.map(cardHTML).join("");
-
-  element.querySelectorAll("[data-fav]").forEach((button) => {
-    button.addEventListener("click", () => {
-      toggleFavorite(button.dataset.fav);
-    });
-  });
-
-  element.querySelectorAll("[data-speak]").forEach((button) => {
-    button.addEventListener("click", () => {
-      speak(button.dataset.speak);
-    });
-  });
+function renderFavorites(){
+ const words=dictionary.filter(w=>favorites.has(w.term));
+ renderWords(words,"#favoritesList");
+ $("#noFavorites").classList.toggle("hidden",words.length>0);
 }
-
-/* -------------------- PHÁT ÂM -------------------- */
-
-function speak(term) {
-  if (!("speechSynthesis" in window)) {
-    alert("Trình duyệt này chưa hỗ trợ phát âm tự động.");
-    return;
-  }
-
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(term);
-  utterance.lang = "en-GB";
-  utterance.rate = 0.88;
-
-  window.speechSynthesis.speak(utterance);
+function showView(name){
+ activeView=name; $$(".tab").forEach(t=>t.classList.toggle("active",t.dataset.view===name));
+ ["lookup","favorites","practice","quiz"].forEach(v=>$("#"+v+"View").classList.toggle("hidden",v!==name));
+ if(name==="favorites")renderFavorites(); if(name==="practice" && !practiceDeck.length)preparePractice();
 }
-
-/* -------------------- TÌM KIẾM -------------------- */
-
-function searchFields(word) {
-  const english = [
-    word.term,
-    word.original_term,
-    word.example_en,
-    word.ipa,
-    word.pos
-  ].filter(Boolean).join(" ");
-
-  const vietnamese = [
-    word.meaning,
-    ...(Array.isArray(word.alternate_meanings)
-      ? word.alternate_meanings
-      : []),
-    word.original_meaning,
-    word.example_vi
-  ].filter(Boolean).join(" ");
-
-  const other = [
-    word.definition,
-    word.category,
-    ...(Array.isArray(word.tags) ? word.tags : []),
-    ...(Array.isArray(word.sources) ? word.sources : []),
-    word.source,
-    word.status
-  ].filter(Boolean).join(" ");
-
-  return {
-    english: normalize(english),
-    vietnamese: normalize(vietnamese),
-    other: normalize(other)
-  };
+function shuffle(arr){return [...arr].sort(()=>Math.random()-.5);}
+function preparePractice(){
+ const favWords=dictionary.filter(w=>favorites.has(w.term));
+ practiceDeck=shuffle(favWords.length?favWords:dictionary).slice(0,Math.min(15,favWords.length?favWords.length:dictionary.length));
+ practiceIndex=0; $("#practiceProgress").textContent=`${practiceDeck.length} thẻ`; showFlashcard();
 }
-
-function searchScore(word, query) {
-  if (!query) return 0;
-
-  const fields = searchFields(word);
-  const term = normalize(word.term);
-  const meaning = normalize(word.meaning);
-
-  if (searchMode === "en-vi") {
-    if (term === query) return 100;
-    if (term.startsWith(query)) return 80;
-    if (fields.english.includes(query)) return 60;
-    if (fields.other.includes(query)) return 20;
-
-    return -1;
-  }
-
-  if (searchMode === "vi-en") {
-    if (meaning === query) return 100;
-    if (meaning.startsWith(query)) return 80;
-    if (fields.vietnamese.includes(query)) return 60;
-    if (fields.other.includes(query)) return 20;
-
-    return -1;
-  }
-
-  if (term === query) return 110;
-  if (meaning === query) return 105;
-
-  if (term.startsWith(query)) return 90;
-  if (meaning.startsWith(query)) return 85;
-
-  if (fields.english.includes(query)) return 70;
-  if (fields.vietnamese.includes(query)) return 65;
-
-  if (fields.other.includes(query)) return 30;
-
-  return -1;
+function showFlashcard(){
+ const w=practiceDeck[practiceIndex];
+ if(!w){$("#flashTerm").textContent="Hoàn thành lượt ôn tập!";$("#flashMeaning").classList.add("hidden");$("#revealBtn").classList.add("hidden");$("#againBtn").disabled=true;$("#knownBtn").disabled=true;$("#practiceProgress").textContent="Hoàn thành";return;}
+ $("#flashTerm").textContent=w.term; $("#flashMeaning").textContent=w.meaning; $("#flashMeaning").classList.add("hidden");$("#revealBtn").classList.remove("hidden");$("#revealBtn").textContent="Hiện nghĩa";$("#againBtn").disabled=true;$("#knownBtn").disabled=true;$("#practiceProgress").textContent=`Thẻ ${practiceIndex+1}/${practiceDeck.length}`;
 }
-
-function searchWords() {
-  const input = $("#searchInput");
-
-  if (!input) return;
-
-  const queryText = input.value.trim();
-  const query = normalize(queryText);
-
-  const matches = dictionary
-    .map((word) => ({
-      word,
-      score: searchScore(word, query)
-    }))
-    .filter((item) => !query || item.score >= 0)
-    .sort((a, b) =>
-      b.score - a.score ||
-      normalize(a.word.term).localeCompare(normalize(b.word.term))
-    )
-    .map((item) => item.word);
-
-  renderWords(matches);
-
-  const emptyState = $("#emptyState");
-  if (emptyState) {
-    emptyState.classList.toggle("hidden", matches.length !== 0);
-  }
-
-  const statusLine = $("#statusLine");
-
-  if (statusLine) {
-    statusLine.textContent = queryText
-      ? `Tìm thấy ${matches.length} kết quả ${
-          searchMode === "en-vi"
-            ? "khi tra Anh → Việt"
-            : searchMode === "vi-en"
-              ? "khi tra Việt → Anh"
-              : "ở cả hai chiều"
-        }. Tìm kiếm không phân biệt chữ hoa/thường và dấu tiếng Việt.`
-      : `${dictionary.length} thuật ngữ tích hợp · Có thể tra tiếng Anh hoặc tiếng Việt.`;
-  }
-
-  const expandButton = $("#expandSearch");
-
-  if (expandButton) {
-    expandButton.disabled = !queryText;
-    expandButton.textContent = "Hỏi ChatGPT về thuật ngữ này ↗";
-  }
+function nextFlashcard(){practiceIndex++;showFlashcard();}
+function startQuiz(){
+ quizQuestions=shuffle(dictionary).slice(0,Math.min(10,dictionary.length));quizIndex=0;score=0;answered=false;
+ $("#quizScore").textContent="Điểm: 0";showQuestion();
 }
-
-/* -------------------- DANH SÁCH YÊU THÍCH -------------------- */
-
-function renderFavorites() {
-  const words = dictionary.filter((word) =>
-    favorites.has(word.term)
-  );
-
-  renderWords(words, "#favoritesList");
-
-  const emptyState = $("#noFavorites");
-
-  if (emptyState) {
-    emptyState.classList.toggle("hidden", words.length > 0);
-  }
+function showQuestion(){
+ const box=$("#quizBox");
+ if(quizIndex>=quizQuestions.length){box.innerHTML=`<div class="eyebrow">KẾT QUẢ</div><h3 class="quiz-question">Bạn đạt ${score}/${quizQuestions.length} câu</h3><p>${score>=8?"Rất tốt! Hãy tiếp tục duy trì việc ôn tập.":score>=5?"Khá tốt. Ôn lại các thuật ngữ chưa chắc chắn nhé.":"Hãy xem lại bộ từ vựng và thử lại."}</p><button id="retryQuiz" class="primary-btn">Làm lại</button>`;$("#retryQuiz").addEventListener("click",startQuiz);return;}
+ const q=quizQuestions[quizIndex], wrong=shuffle(dictionary.filter(w=>w.term!==q.term)).slice(0,3);
+ const options=shuffle([q,...wrong]);
+ box.innerHTML=`<div class="eyebrow">CÂU ${quizIndex+1}/${quizQuestions.length}</div><h3 class="quiz-question">${escapeHtml(q.term)}</h3><p>Chọn nghĩa tiếng Việt chính xác nhất.</p><div class="quiz-options">${options.map(o=>`<button class="quiz-option" data-answer="${escapeHtml(o.term)}">${escapeHtml(o.meaning)}</button>`).join("")}</div><p id="quizFeedback" class="quiz-feedback"></p><button id="nextQuestion" class="primary-btn hidden">${quizIndex===quizQuestions.length-1?"Xem kết quả":"Câu tiếp theo →"}</button>`;
+ box.querySelectorAll("[data-answer]").forEach(b=>b.addEventListener("click",()=>{
+  if(answered)return;answered=true;const correct=b.dataset.answer===q.term;
+  if(correct){score++;b.classList.add("correct");$("#quizFeedback").textContent="Chính xác!";}else{b.classList.add("wrong");box.querySelector(`[data-answer="${CSS.escape(q.term)}"]`).classList.add("correct");$("#quizFeedback").textContent=`Đáp án: ${q.meaning}`;}
+  box.querySelectorAll("[data-answer]").forEach(x=>x.disabled=true);$("#quizScore").textContent=`Điểm: ${score}`;$("#nextQuestion").classList.remove("hidden");
+ }));
+ $("#nextQuestion").addEventListener("click",()=>{quizIndex++;answered=false;showQuestion();});
 }
-
-/* -------------------- CHUYỂN TAB -------------------- */
-
-function showView(name) {
-  activeView = name;
-
-  $$(".tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.view === name);
-  });
-
-  ["lookup", "favorites", "practice", "quiz"].forEach((view) => {
-    const element = $(`#${view}View`);
-
-    if (element) {
-      element.classList.toggle("hidden", view !== name);
-    }
-  });
-
-  if (name === "favorites") {
-    renderFavorites();
-  }
-
-  if (name === "practice" && !practiceDeck.length) {
-    preparePractice();
-  }
+function expandLookup(){
+ const q=$("#searchInput").value.trim();
+ if(!q) return;
+ // The curated local dictionary always takes priority. This action only opens ChatGPT
+ // when the user explicitly asks for outside help; no API key or automatic replacement.
+ let direction="dịch theo ngữ cảnh quân sự";
+ if(searchMode==="en-vi") direction="dịch từ tiếng Anh sang tiếng Việt";
+ else if(searchMode==="vi-en") direction="dịch từ tiếng Việt sang tiếng Anh";
+ else {
+   const hasVietnamese=/[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừừữựýỳỷỹỵ]/i.test(q);
+   direction=hasVietnamese?"dịch từ tiếng Việt sang tiếng Anh":"xác định ngôn ngữ nguồn và dịch sang ngôn ngữ còn lại (Anh–Việt hoặc Việt–Anh)";
+ }
+ const prompt=`Hãy hỗ trợ dịch thuật ngữ cho từ điển quân sự Anh–Việt. Cụm từ cần dịch: “${q}”. Yêu cầu: ${direction}. Ưu tiên thuật ngữ quân sự chính xác; nêu bản dịch đề xuất, nghĩa theo ngữ cảnh, và các cách dịch khác nếu có. Nếu thiếu ngữ cảnh, hãy nói rõ điểm chưa chắc chắn và không tự khẳng định là thuật ngữ chính thức. Đây là bản dịch tham khảo, không tự động thay thế bộ từ vựng nội bộ của tôi.`;
+ const url=new URL("https://chatgpt.com/");
+ url.searchParams.set("q",prompt);
+ window.open(url.toString(),"_blank","noopener,noreferrer");
+ $("#statusLine").textContent="Đã mở ChatGPT trong tab mới với câu hỏi dịch đã điền sẵn. Nếu cần, đăng nhập rồi gửi câu hỏi; bộ từ vựng nội bộ vẫn là nguồn ưu tiên.";
 }
-
-/* -------------------- THẺ ÔN TẬP -------------------- */
-
-function preparePractice() {
-  const favoriteWords = dictionary.filter((word) =>
-    favorites.has(word.term)
-  );
-
-  const source = favoriteWords.length
-    ? favoriteWords
-    : dictionary;
-
-  practiceDeck = shuffle(source).slice(
-    0,
-    Math.min(15, source.length)
-  );
-
-  practiceIndex = 0;
-
-  const progress = $("#practiceProgress");
-
-  if (progress) {
-    progress.textContent = `${practiceDeck.length} thẻ`;
-  }
-
-  showFlashcard();
+async function init(){
+ try{const r=await fetch("vocabulary.json");dictionary=await r.json();}catch(e){$("#statusLine").textContent="Không tải được vocabulary.json. Hãy giữ tệp này cùng thư mục với index.html.";return;}
+ updateFavCount();searchWords();
+ $("#searchInput").addEventListener("input",searchWords);
+ $("#clearSearch").addEventListener("click",()=>{$("#searchInput").value="";searchWords();$("#searchInput").focus();});
+ $$(".suggestion").forEach(b=>b.addEventListener("click",()=>{$("#searchInput").value=b.dataset.query;searchWords();}));
+ $$(".direction-btn").forEach(b=>b.addEventListener("click",()=>{
+   searchMode=b.dataset.mode;
+   $$(".direction-btn").forEach(x=>{const active=x===b;x.classList.toggle("active",active);x.setAttribute("aria-pressed",String(active));});
+   searchWords();
+ }));
+ $$(".tab").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
+ $("#expandSearch").addEventListener("click",expandLookup);
+ $("#revealBtn").addEventListener("click",()=>{$("#flashMeaning").classList.remove("hidden");$("#revealBtn").classList.add("hidden");$("#againBtn").disabled=false;$("#knownBtn").disabled=false;});
+ $("#againBtn").addEventListener("click",()=>{practiceDeck.push(practiceDeck[practiceIndex]);nextFlashcard();});
+ $("#knownBtn").addEventListener("click",nextFlashcard);
+ $("#startPractice").addEventListener("click",preparePractice);
+ $("#startQuiz").addEventListener("click",startQuiz);
+ $("#themeBtn").addEventListener("click",()=>{document.body.classList.toggle("dark");localStorage.setItem("milDictDark",document.body.classList.contains("dark")?"1":"0");});
+ if(localStorage.getItem("milDictDark")==="1")document.body.classList.add("dark");
+ if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
-
-function showFlashcard() {
-  const word = practiceDeck[practiceIndex];
-
-  const termElement = $("#flashTerm");
-  const meaningElement = $("#flashMeaning");
-  const revealButton = $("#revealBtn");
-  const againButton = $("#againBtn");
-  const knownButton = $("#knownBtn");
-  const progress = $("#practiceProgress");
-
-  if (!word) {
-    if (termElement) {
-      termElement.textContent = "Hoàn thành lượt ôn tập!";
-    }
-
-    if (meaningElement) {
-      meaningElement.classList.add("hidden");
-    }
-
-    if (revealButton) {
-      revealButton.classList.add("hidden");
-    }
-
-    if (againButton) againButton.disabled = true;
-    if (knownButton) knownButton.disabled = true;
-
-    if (progress) {
-      progress.textContent = "Hoàn thành";
-    }
-
-    return;
-  }
-
-  if (termElement) {
-    termElement.textContent = word.term;
-  }
-
-  if (meaningElement) {
-    meaningElement.textContent = word.meaning || "Chưa có bản dịch";
-    meaningElement.classList.add("hidden");
-  }
-
-  if (revealButton) {
-    revealButton.classList.remove("hidden");
-    revealButton.textContent = "Hiện nghĩa";
-  }
-
-  if (againButton) againButton.disabled = true;
-  if (knownButton) knownButton.disabled = true;
-
-  if (progress) {
-    progress.textContent =
-      `Thẻ ${practiceIndex + 1}/${practiceDeck.length}`;
-  }
-}
-
-function nextFlashcard() {
-  practiceIndex++;
-  showFlashcard();
-}
-
-/* -------------------- KIỂM TRA TỪ VỰNG -------------------- */
-
-function startQuiz() {
-  if (!dictionary.length) return;
-
-  quizQuestions = shuffle(dictionary).slice(
-    0,
-    Math.min(10, dictionary.length)
-  );
-
-  quizIndex = 0;
-  score = 0;
-  answered = false;
-
-  const scoreElement = $("#quizScore");
-
-  if (scoreElement) {
-    scoreElement.textContent = "Điểm: 0";
-  }
-
-  showQuestion();
-}
-
-function showQuestion() {
-  const box = $("#quizBox");
-
-  if (!box) return;
-
-  if (quizIndex >= quizQuestions.length) {
-    box.innerHTML = `
-      <div class="eyebrow">KẾT QUẢ</div>
-
-      <h3 class="quiz-question">
-        Bạn đạt ${score}/${quizQuestions.length} câu
-      </h3>
-
-      <p>
-        ${
-          score >= 8
-            ? "Rất tốt! Hãy tiếp tục duy trì việc ôn tập."
-            : score >= 5
-              ? "Khá tốt. Ôn lại các thuật ngữ chưa chắc chắn nhé."
-              : "Hãy xem lại bộ từ vựng và thử lại."
-        }
-      </p>
-
-      <button id="retryQuiz" class="primary-btn">
-        Làm lại
-      </button>
-    `;
-
-    $("#retryQuiz").addEventListener("click", startQuiz);
-
-    return;
-  }
-
-  const question = quizQuestions[quizIndex];
-
-  const wrongAnswers = shuffle(
-    dictionary.filter((word) => word.term !== question.term)
-  ).slice(0, 3);
-
-  const options = shuffle([question, ...wrongAnswers]);
-
-  box.innerHTML = `
-    <div class="eyebrow">
-      CÂU ${quizIndex + 1}/${quizQuestions.length}
-    </div>
-
-    <h3 class="quiz-question">
-      ${escapeHtml(question.term)}
-    </h3>
-
-    <p>Chọn nghĩa tiếng Việt chính xác nhất.</p>
-
-    <div class="quiz-options">
-      ${options.map((option) => `
-        <button
-          class="quiz-option"
-          type="button"
-          data-answer="${escapeHtml(option.term)}"
-        >
-          ${escapeHtml(option.meaning || "Chưa có bản dịch")}
-        </button>
-      `).join("")}
-    </div>
-
-    <p id="quizFeedback" class="quiz-feedback"></p>
-
-    <button
-      id="nextQuestion"
-      class="primary-btn hidden"
-    >
-      ${
-        quizIndex === quizQuestions.length - 1
-          ? "Xem kết quả"
-          : "Câu tiếp theo →"
-      }
-    </button>
-  `;
-
-  box.querySelectorAll("[data-answer]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (answered) return;
-
-      answered = true;
-
-      const correct = button.dataset.answer === question.term;
-      const feedback = $("#quizFeedback");
-
-      if (correct) {
-        score++;
-        button.classList.add("correct");
-
-        if (feedback) {
-          feedback.textContent = "Chính xác!";
-        }
-      } else {
-        button.classList.add("wrong");
-
-        const correctButton = [...box.querySelectorAll("[data-answer]")]
-          .find((item) => item.dataset.answer === question.term);
-
-        if (correctButton) {
-          correctButton.classList.add("correct");
-        }
-
-        if (feedback) {
-          feedback.textContent = `Đáp án: ${question.meaning}`;
-        }
-      }
-
-      box.querySelectorAll("[data-answer]").forEach((item) => {
-        item.disabled = true;
-      });
-
-      const scoreElement = $("#quizScore");
-
-      if (scoreElement) {
-        scoreElement.textContent = `Điểm: ${score}`;
-      }
-
-      $("#nextQuestion").classList.remove("hidden");
-    });
-  });
-
-  $("#nextQuestion").addEventListener("click", () => {
-    quizIndex++;
-    answered = false;
-    showQuestion();
-  });
-}
-
-/* -------------------- MỞ CHATGPT ĐỂ HỎI DỊCH -------------------- */
-
-function expandLookup() {
-  const input = $("#searchInput");
-  const query = input ? input.value.trim() : "";
-
-  if (!query) return;
-
-  let direction = "dịch theo ngữ cảnh quân sự";
-
-  if (searchMode === "en-vi") {
-    direction = "dịch từ tiếng Anh sang tiếng Việt";
-  } else if (searchMode === "vi-en") {
-    direction = "dịch từ tiếng Việt sang tiếng Anh";
-  } else {
-    const hasVietnamese =
-      /[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừừữựýỳỷỹỵ]/i
-        .test(query);
-
-    direction = hasVietnamese
-      ? "dịch từ tiếng Việt sang tiếng Anh"
-      : "xác định ngôn ngữ nguồn và dịch sang ngôn ngữ còn lại (Anh–Việt hoặc Việt–Anh)";
-  }
-
-  const prompt =
-    `Hãy hỗ trợ dịch thuật ngữ cho từ điển quân sự Anh–Việt. ` +
-    `Cụm từ cần dịch: “${query}”. ` +
-    `Yêu cầu: ${direction}. ` +
-    `Ưu tiên thuật ngữ quân sự chính xác; nêu bản dịch đề xuất, ` +
-    `nghĩa theo ngữ cảnh, và các cách dịch khác nếu có. ` +
-    `Nếu thiếu ngữ cảnh, hãy nói rõ điểm chưa chắc chắn ` +
-    `và không tự khẳng định là thuật ngữ chính thức. ` +
-    `Đây là bản dịch tham khảo, không tự động thay thế bộ từ vựng nội bộ của tôi.`;
-
-  const url = new URL("https://chatgpt.com/");
-  url.searchParams.set("q", prompt);
-
-  window.open(
-    url.toString(),
-    "_blank",
-    "noopener,noreferrer"
-  );
-
-  const statusLine = $("#statusLine");
-
-  if (statusLine) {
-    statusLine.textContent =
-      "Đã mở ChatGPT trong tab mới với câu hỏi dịch đã điền sẵn. " +
-      "Nếu cần, đăng nhập rồi gửi câu hỏi; " +
-      "bộ từ vựng nội bộ vẫn là nguồn ưu tiên.";
-  }
-}
-
-/* -------------------- TẢI DỮ LIỆU -------------------- */
-
-async function loadDictionary() {
-  const statusLine = $("#statusLine");
-
-  try {
-    const dataUrl = new URL(
-      "./vocabulary.json",
-      document.baseURI
-    );
-
-    const response = await fetch(dataUrl);
-
-    if (!response.ok) {
-      throw new Error(
-        `Máy chủ trả về HTTP ${response.status}. ` +
-        "Không tìm thấy hoặc không thể tải vocabulary.json."
-      );
-    }
-
-    let data;
-
-    try {
-      data = await response.json();
-    } catch (error) {
-      throw new Error(
-        "Tệp vocabulary.json có lỗi cú pháp JSON. " +
-        "Hãy kiểm tra dấu phẩy, dấu ngoặc kép và ngoặc đóng."
-      );
-    }
-
-    if (!Array.isArray(data)) {
-      throw new Error(
-        "Cấu trúc vocabulary.json không đúng. " +
-        "Dữ liệu cần là một mảng JSON bắt đầu bằng [ và kết thúc bằng ]."
-      );
-    }
-
-    const validEntries = data.filter((word) => {
-      return (
-        word &&
-        typeof word === "object" &&
-        typeof word.term === "string" &&
-        word.term.trim() !== ""
-      );
-    });
-
-    if (!validEntries.length) {
-      throw new Error(
-        "Tệp JSON đã tải nhưng không có thuật ngữ hợp lệ. " +
-        "Mỗi mục cần có trường term."
-      );
-    }
-
-    dictionary = validEntries;
-
-    if (validEntries.length !== data.length) {
-      console.warn(
-        `Đã bỏ qua ${data.length - validEntries.length} mục từ vựng không hợp lệ.`
-      );
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Lỗi tải từ điển:", error);
-
-    if (statusLine) {
-      statusLine.textContent = `Lỗi tải từ điển: ${error.message}`;
-    }
-
-    const results = $("#results");
-
-    if (results) {
-      results.innerHTML = "";
-    }
-
-    const emptyState = $("#emptyState");
-
-    if (emptyState) {
-      emptyState.classList.add("hidden");
-    }
-
-    return false;
-  }
-}
-
-/* -------------------- KHỞI TẠO ỨNG DỤNG -------------------- */
-
-async function init() {
-  loadFavorites();
-  updateFavCount();
-
-  const loaded = await loadDictionary();
-
-  if (!loaded) {
-    return;
-  }
-
-  searchWords();
-
-  /* Tìm kiếm */
-  $("#searchInput").addEventListener("input", searchWords);
-
-  /* Xóa nội dung tìm kiếm */
-  $("#clearSearch").addEventListener("click", () => {
-    $("#searchInput").value = "";
-    searchWords();
-    $("#searchInput").focus();
-  });
-
-  /* Từ khóa gợi ý */
-  $$(".suggestion").forEach((button) => {
-    button.addEventListener("click", () => {
-      $("#searchInput").value = button.dataset.query;
-      searchWords();
-    });
-  });
-
-  /* Chọn chiều tra cứu */
-  $$(".direction-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      searchMode = button.dataset.mode;
-
-      $$(".direction-btn").forEach((item) => {
-        const active = item === button;
-
-        item.classList.toggle("active", active);
-        item.setAttribute("aria-pressed", String(active));
-      });
-
-      searchWords();
-    });
-  });
-
-  /* Chuyển tab */
-  $$(".tab").forEach((button) => {
-    button.addEventListener("click", () => {
-      showView(button.dataset.view);
-    });
-  });
-
-  /* Hỏi ChatGPT */
-  $("#expandSearch").addEventListener("click", expandLookup);
-
-  /* Thẻ ôn tập */
-  $("#revealBtn").addEventListener("click", () => {
-    $("#flashMeaning").classList.remove("hidden");
-    $("#revealBtn").classList.add("hidden");
-
-    $("#againBtn").disabled = false;
-    $("#knownBtn").disabled = false;
-  });
-
-  $("#againBtn").addEventListener("click", () => {
-    const currentWord = practiceDeck[practiceIndex];
-
-    if (currentWord) {
-      practiceDeck.push(currentWord);
-    }
-
-    nextFlashcard();
-  });
-
-  $("#knownBtn").addEventListener("click", nextFlashcard);
-
-  $("#startPractice").addEventListener("click", preparePractice);
-
-  /* Kiểm tra */
-  $("#startQuiz").addEventListener("click", startQuiz);
-
-  /* Giao diện sáng / tối */
-  $("#themeBtn").addEventListener("click", () => {
-    document.body.classList.toggle("dark");
-
-    try {
-      localStorage.setItem(
-        "milDictDark",
-        document.body.classList.contains("dark") ? "1" : "0"
-      );
-    } catch (error) {
-      console.warn("Không lưu được tùy chọn giao diện:", error);
-    }
-  });
-
-  try {
-    if (localStorage.getItem("milDictDark") === "1") {
-      document.body.classList.add("dark");
-    }
-  } catch (error) {
-    console.warn("Không đọc được tùy chọn giao diện:", error);
-  }
-
-  /* Service Worker / PWA */
-  if (
-    "serviceWorker" in navigator &&
-    location.protocol.startsWith("http")
-  ) {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .catch((error) => {
-        console.warn("Không đăng ký được Service Worker:", error);
-      });
-  }
-}
-
-/* Chạy ứng dụng */
 init();
